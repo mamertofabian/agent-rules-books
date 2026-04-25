@@ -76,6 +76,12 @@ Author: Vaughn Vernon
 
 The book shows how to apply DDD in real systems: aggregates, domain events, contexts, integrations, and application architecture. This rule set is more implementation-focused than `domain-driven-design-distilled`.
 
+### Language Implementation Patterns
+
+Author: Terence Parr
+
+The book describes practical patterns for building interpreters, compilers, parsers, and domain-specific languages: recursive descent parsing, Pratt expression parsing, AST construction, visitor traversals, direct interpretation, virtual machines, code generation, type checking, and runtime support. This rule set is intended for projects that implement language tooling, DSL engines, or query processors.
+
 ### Patterns of Enterprise Application Architecture
 
 Author: Martin Fowler
@@ -136,6 +142,7 @@ Choose rules based on the task:
 - legacy code: `working-effectively-with-legacy-code`, optionally `refactoring`
 - production systems: `release-it`
 - data systems: `designing-data-intensive-applications`
+- language tooling and DSLs: `language-implementation-patterns`
 - general engineering style: `the-pragmatic-programmer`
 
 A good default is to start with one primary rule set and add a second only when it materially changes the agent's decisions. For a specific task, you can temporarily copy a rule into the project, use it during the work, then remove or disable it.

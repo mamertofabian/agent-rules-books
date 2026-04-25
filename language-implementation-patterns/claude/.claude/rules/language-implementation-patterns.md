@@ -1,0 +1,336 @@
+# Language Implementation Patterns
+
+## Purpose
+
+This rule set adapts **Language Implementation Patterns** by Terence Parr into
+operational guidance for building interpreters, compilers, parsers, code generators,
+and domain-specific language tooling.
+
+All code generation, edits, and reviews must optimize for:
+- clear separation between parsing, analysis, and code generation phases
+- composable visitor and tree-traversal patterns
+- correct grammar-to-code mappings
+- maintainable AST representations
+- testable language semantics
+- predictable runtime behavior
+
+This file is a binding engineering policy for Claude.
+
+---
+
+## Primary Directive
+
+When implementing language tooling, keep parsing, semantic analysis, and code
+generation as distinct, testable stages. Never mix token recognition with semantic
+analysis, and never embed code generation logic inside the parser.
+
+Prefer:
+1. a clean grammar definition
+2. an explicit AST construction step
+3. a separate analysis or transformation pass
+4. a dedicated code generation or execution phase
+
+Reject designs that conflate parsing with execution, or that embed business logic
+inside grammar rules.
+
+---
+
+## Grammar and Parser Rules
+
+### Grammar Design
+1. Write grammars that are unambiguous and free of left recursion before implementing them.
+2. Favor explicit grammar definitions (EBNF, DSL, parser combinators) over ad hoc parsing code.
+3. Keep token definitions separate from grammar rules.
+4. When choosing a parser strategy, prefer recursive descent for readability unless performance demands otherwise.
+5. Document non-obvious grammar decisions near the grammar file, not buried in parser code.
+
+### Recursive Descent Parsing
+1. Each non-terminal gets its own parsing method or function.
+2. Each method should consume exactly what its grammar rule declares, no more, no less.
+3. Use explicit lookahead when the grammar requires it; do not rely on backtracking as a design tool.
+4. Keep parsing methods small: if a method grows beyond its rule, the grammar or AST design needs refinement.
+5. Report errors at the point of failure with context (token, position, expected vs. actual).
+
+### Expression Parsing
+1. Use operator precedence parsing (Pratt parser / top-down operator precedence) for expression grammars.
+2. Assign explicit precedence and associativity to every operator.
+3. Keep infix, prefix, and postfix operators in a single precedence table or configuration.
+4. Do not hard-code expression structure in the parser method when a precedence table is clearer.
+5. Test edge cases: chained operators, mixed associativity, nested parentheses, unary vs. binary overloads.
+
+### Tokenization
+1. Tokenize in a single left-to-right pass; do not re-scan input.
+2. Emit tokens with position information (line, column, or byte offset).
+3. Treat whitespace and comments as tokens that can be consumed or discarded explicitly.
+4. Handle lexical ambiguities (e.g., `>>` vs. `> >`) at the tokenizer level with deterministic rules.
+5. Never perform semantic validation during tokenization.
+
+### Error Recovery
+1. Provide parse errors that identify the token, position, and expected structure.
+2. Recover from errors by skipping to a synchronization point (semicolon, closing brace, next statement).
+3. Report multiple errors in a single pass when possible; do not stop at the first error.
+4. Distinguish between lexical errors (bad characters), syntactic errors (bad structure), and semantic errors (bad meaning).
+5. Do not silently accept invalid input.
+
+---
+
+## AST Construction Rules
+
+### Node Design
+1. Each grammar non-terminal maps to a specific AST node type or class.
+2. AST nodes should be immutable where possible; mutation belongs in transformation passes, not in nodes.
+3. Keep AST nodes lean: no execution logic, no side effects, no I/O.
+4. Attach source position to every node for error reporting and tooling.
+5. Prefer composition over inheritance for AST node hierarchies unless the language structure clearly demands a type hierarchy.
+
+### Tree Structure
+1. Build the AST during parsing, not after. The parser should produce the tree as its primary output.
+2. Keep the AST close to the grammar: each node should correspond to a grammar concept.
+3. Flatten unnecessary nesting: avoid wrapper nodes that add no semantic value.
+4. Do not store evaluated results in the AST; evaluation is a separate pass.
+5. When the language has phases (parse, type-check, transform, generate), the AST may evolve through each phase with distinct node types.
+
+---
+
+## Visitor and Traversal Rules
+
+### Visitor Pattern
+1. Use the visitor pattern to separate tree traversal from node behavior.
+2. Each visitor has a single purpose: type checking, code generation, optimization, pretty printing, etc.
+3. Keep visitors focused: do not combine analysis and code generation in one visitor.
+4. Provide a default visitor with no-op or identity methods to reduce boilerplate.
+5. When adding new operations on the AST, create a new visitor instead of adding methods to node classes.
+
+### Tree Transformation
+1. Implement transformations as visitors that produce new trees, not as in-place mutations.
+2. When in-place mutation is necessary, ensure the transformation is atomic and testable.
+3. Keep transformation passes composable: output of one pass is valid input for the next.
+4. Document the invariants each transformation preserves or establishes.
+5. Prefer structural recursion (pattern matching, destructuring) for tree transformations when the language supports it.
+
+---
+
+## Interpreter Rules
+
+### Direct AST Execution
+1. Implement direct AST execution by dispatching on node type via visitor or method dispatch.
+2. Keep the evaluation context (variables, scope, state) separate from the AST.
+3. Support recursive evaluation naturally through the tree structure.
+4. Do not embed language runtime state inside AST nodes.
+5. Make the evaluation function pure where possible: pass state in, return state out.
+
+### Virtual Machine Execution
+1. When byte code is used, define the instruction set explicitly and keep it minimal.
+2. Separate the compiler (AST to byte code) from the VM (byte code to result).
+3. Use an explicit stack or register model; document the stack discipline.
+4. Test each instruction in isolation before testing programs.
+5. Provide a byte code disassembler or debugger for development and testing.
+
+### Symbol Tables and Scope
+1. Maintain a separate symbol table for variable and type lookup.
+2. Support nested scopes with push/pop or chain-based lookup.
+3. Validate variable declarations and references during analysis, not during execution.
+4. Distinguish between compile-time symbols (types, constants) and runtime symbols (variables, functions).
+5. Report shadowing, redefinition, and out-of-scope references as analysis errors.
+
+---
+
+## Code Generation Rules
+
+### Target Language Emission
+1. Generate code that is readable and maintainable, not just correct.
+2. Use indentation and structure in generated code to reflect the source AST hierarchy.
+3. Avoid generating unnecessary parentheses, casts, or boilerplate.
+4. When generating code, emit one construct per AST node; do not batch unrelated output.
+5. Support a "pretty print" pass that can reconstruct readable source from the AST.
+
+### Optimization
+1. Apply optimizations as separate, composable passes over the AST or intermediate representation.
+2. Document what each optimization does and what invariants it preserves.
+3. Prefer simple, local optimizations (constant folding, dead code elimination) before complex global passes.
+4. Never optimize in a way that changes observable behavior unless that is the explicit goal.
+5. Test optimizations against a baseline: output must match before and after each pass.
+
+### Type Checking
+1. Separate type checking from parsing and code generation.
+2. Define the type system rules explicitly: what types exist, how they combine, what conversions are valid.
+3. Propagate type information through the AST via a dedicated visitor or annotation pass.
+4. Report type errors with position, actual type, expected type, and a clear message.
+5. Support gradual typing or dynamic fallback only if the language specification allows it.
+
+---
+
+## Runtime Support Rules
+
+### Memory Management
+1. If implementing garbage collection, start with a simple mark-and-sweep or reference counting approach.
+2. Separate object allocation from object layout; keep the GC neutral to language semantics.
+3. Document the root set and reachability rules clearly.
+4. Do not mix GC logic with language execution logic.
+5. Test memory management with programs that create cycles, large allocations, and short-lived objects.
+
+### Evaluation Context
+1. Represent the execution context (environment, store, output) as an explicit data structure.
+2. Pass context through evaluation calls; do not rely on global state.
+3. Support context extension for scope (new variables) and context update for assignment.
+4. Make the context inspectable for debugging and testing.
+5. When implementing closures, capture environment explicitly, not implicitly.
+
+---
+
+## Testing Rules for Language Tooling
+
+### Grammar and Parser Tests
+1. Test each grammar rule with valid and invalid inputs.
+2. Include edge cases: empty input, single token, maximum nesting, ambiguous constructs.
+3. Test error messages for accuracy: position, expected token, recovery behavior.
+4. Test whitespace and comment handling explicitly.
+5. Use a test suite of representative programs, not just isolated expressions.
+
+### AST Tests
+1. Verify AST structure against expected tree shape for each grammar construct.
+2. Test that AST nodes carry correct source position information.
+3. Assert immutability of AST nodes after construction.
+4. Test visitor traversal order (pre-order, post-order, in-order) matches expectations.
+5. Use AST serialization (JSON, textual) for golden-file testing.
+
+### Interpreter and VM Tests
+1. Test each language construct in isolation before testing combined programs.
+2. Include tests for variable scoping, closures, recursion, and error conditions.
+3. Test that evaluation is deterministic: same input always produces same output.
+4. Test resource cleanup: file handles, I/O, external calls are properly managed.
+5. Use property-based testing for language semantics where applicable (e.g., associativity, identity).
+
+### Code Generation Tests
+1. Generate code for every AST node type and verify the output is syntactically valid.
+2. When possible, execute the generated code and compare results with direct interpretation.
+3. Test that optimizations preserve semantics: compare before/after output on a test suite.
+4. Test generated code formatting and readability.
+5. Cross-compile a small standard library to validate the full pipeline.
+
+---
+
+## Review Rules for Claude
+
+When reviewing language implementation code, actively look for:
+- grammar rules that are ambiguous or left-recursive
+- parser methods that do more than consume their declared rule
+- AST nodes that contain execution logic or side effects
+- visitors that mix concerns (analysis + generation)
+- symbol table lookups that are not scoped correctly
+- code generation that emits unreadable or unstructured output
+- optimizations that lack invariant documentation
+- missing source position information on AST nodes
+- global state in the evaluator or VM
+- error messages that lack position or context
+
+---
+
+## Forbidden Patterns
+
+Do not generate or keep these patterns unless explicitly required and justified.
+
+### Parser-Interpreter Conflation
+- executing code during parsing
+- embedding semantic validation in grammar rules
+- mixing token recognition with type checking
+
+### God AST Node
+- AST nodes that evaluate themselves
+- AST nodes that generate code directly
+- AST nodes that manage their own memory or scope
+
+### Monolithic Visitor
+- a single visitor that parses, checks, and generates
+- a visitor that mutates the tree and produces output simultaneously
+- a visitor with more than one coherent responsibility
+
+### Global State Runtime
+- language state stored in global variables
+- symbol table as a singleton
+- evaluation context as a module-level mutable object
+
+### Optimization Without Testing
+- applying transformations without a baseline comparison
+- optimizing before the basic implementation is correct and tested
+- changing observable behavior under the guise of optimization
+
+---
+
+## Implementation Preferences
+
+- Prefer recursive descent parsers for readability unless performance profiling demands a different strategy.
+- Prefer Pratt parsers for expression grammars over hand-written recursive descent.
+- Prefer immutable AST nodes with functional transformation passes.
+- Prefer explicit visitor pattern over adding methods to node classes.
+- Prefer separate compilation passes over single-pass implementations.
+- Prefer typed intermediate representations when the language requires type checking.
+- Prefer explicit scope chains over flat symbol tables.
+- Prefer deterministic error recovery over backtracking.
+
+---
+
+## Code Generation Rules
+
+When implementing language tooling, use this default order:
+1. Define the grammar formally
+2. Implement the tokenizer
+3. Implement the parser with AST construction
+4. Implement a simple direct interpreter
+5. Add semantic analysis (type checking, scope validation)
+6. Add transformations or optimizations
+7. Add code generation if targeting another language or VM
+8. Build test suite at each stage
+
+Preferred first moves:
+- write the grammar in a formal notation
+- implement tokenization with position tracking
+- build the parser with one method per non-terminal
+- implement AST visitors for pretty printing before evaluation
+- test each stage independently
+
+Preferred avoidance:
+- single-pass parser-evaluator hybrids
+- embedding execution logic in AST nodes
+- global mutable state in the runtime
+- optimization before correctness
+- hand-written parsers when a grammar definition is clearer
+
+---
+
+## Stopping Rules
+
+Stop refining the language implementation when:
+- the grammar is unambiguous and fully implemented
+- the parser produces correct ASTs for all valid inputs
+- error messages are accurate and actionable
+- the interpreter or code generator produces correct results for the test suite
+- the visitor pattern cleanly separates concerns
+- further optimization would not be justified by usage
+
+---
+
+## Review Checklist
+
+Before finalizing any change to language tooling, verify:
+- Is the grammar unambiguous and free of left recursion?
+- Does each parser method correspond to exactly one grammar rule?
+- Are AST nodes free of execution logic and side effects?
+- Is source position attached to every AST node?
+- Do visitors have single, focused responsibilities?
+- Is the symbol table scoped correctly?
+- Are error messages accurate, positioned, and actionable?
+- Does the test suite cover edge cases for each language construct?
+- Are transformations and optimizations tested against a baseline?
+- Is the separation between parsing, analysis, and generation clear?
+
+If any answer is no, revise before shipping.
+
+---
+
+## Final Instruction
+
+When implementing language tooling, favor **clear phase separation**, **explicit AST structure**,
+and **focused visitor patterns**. Reject designs that conflate parsing with execution,
+embed business logic in grammar rules, or use global state for runtime management.
+When uncertain, add a new visitor or transformation pass rather than complicating existing ones.
