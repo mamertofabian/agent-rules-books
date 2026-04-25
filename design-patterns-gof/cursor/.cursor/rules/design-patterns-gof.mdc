@@ -1,0 +1,639 @@
+---
+description: Apply Gang of Four Design Patterns rules through a modern lens as persistent project guidance for implementation, refactoring, review, and testing.
+alwaysApply: true
+---
+
+# Design Patterns (GOF)
+
+## Purpose
+
+This repository applies the **Gang of Four Design Patterns** (Gamma, Helm, Johnson, Vlissides)
+through a modern engineering lens. The original catalog of 23 patterns is adapted into
+operational guidance: when to reach for a pattern, when to skip it, and when the language
+itself already solves the problem.
+
+All code generation, edits, and reviews must optimize for:
+- choosing the simplest structure that satisfies the requirement
+- applying patterns deliberately, not reflexively
+- preferring language-native features over manual pattern scaffolding
+- keeping behavior changeable without structural churn
+- explicit identification of variation points before introducing indirection
+
+This file is a binding engineering policy for Cursor.
+
+---
+
+## Primary Directive
+
+Do not reach for a pattern first. Identify the **variation point** — the aspect of the
+system that must change independently — and choose the smallest structure that isolates it.
+
+Prefer:
+1. a direct implementation with no indirection
+2. a language-native feature (closure, enum, generics, traits)
+3. a simple named function or data structure
+4. a well-known pattern only when the variation point justifies it
+
+Reject:
+- introducing patterns as a default response to any complexity
+- building hierarchy scaffolding before a second concrete need exists
+- applying a pattern whose cost exceeds its variation benefit
+
+---
+
+## Four Guiding Principles
+
+These principles govern every pattern decision.
+
+### 1. Code to Interfaces, Not Implementations
+
+- Define the contract a client needs, not the concrete type it receives.
+- The dependency must be on an abstraction that the client actually uses.
+- In modern languages, "interface" means any contract: protocol, trait, type class, abstract class, or duck-typed signature.
+- Do not create an interface for a single implementation. Two real variants justify the abstraction.
+
+### 2. Favor Composition Over Inheritance
+
+- Prefer assembling behavior from smaller, reusable parts over building deep class hierarchies.
+- Inheritance is for "is-a" relationships with stable, shared implementation.
+- Composition is for "has-a" and "uses-a" relationships where behavior is assembled at runtime.
+- When a hierarchy grows beyond two levels of meaningful specialization, reconsider composition.
+
+### 3. Identify What Varies and Isolate It
+
+- Before adding indirection, name the variation point explicitly.
+- If nothing varies, the pattern is premature.
+- The isolation mechanism (interface, delegate, closure) should match the granularity of the variation.
+- Do not isolate every parameter as a variation point.
+
+### 4. Strive for Loose Coupling
+
+- Connected objects should know each other by contract, not implementation.
+- Avoid hard-coded construction, global lookup, or ambient dependency access.
+- Prefer dependency injection, constructor parameters, or explicit factories over service locators.
+- Loose coupling means you can replace one part without touching its collaborators.
+
+---
+
+## Modern Language Obsolescence
+
+Many GOF patterns were designed for Java and C++. Modern languages provide built-in
+mechanisms that make the manual pattern scaffolding unnecessary.
+
+**Always prefer the language-native mechanism first.**
+
+### Patterns Largely Obsolete or Simplified
+
+| Pattern | Modern Replacement | Languages |
+|---|---|---|
+| Singleton | Language-level singletons, dependency injection, top-level functions | Rust, Go, Swift, Kotlin, Python, JS |
+| Factory Method | Generics, constructors with default params, dependency injection | C#, Rust, TypeScript, Kotlin |
+| Abstract Factory | Generics, builder patterns, DI containers | Most modern languages |
+| Builder | Named parameters, records, data classes, builder libraries | Kotlin, Python, Rust, TypeScript, Java 21+ |
+| Prototype | Built-in cloning, copy-with-modifiers, immutable data types | Python, Rust, Swift, Kotlin |
+| Strategy | Closures, lambdas, first-class functions | All modern languages |
+| Command | Closures, lambdas, function objects | All modern languages |
+| Template Method | Closures, higher-order functions, composition | All modern languages |
+| Observer | Reactive streams, event emitters, async iterators, signals | Swift, Kotlin, JS, Rust, C#, Python |
+| Iterator | Language iteration protocols, range-based for, forEach | All modern languages |
+| Visitor | Pattern matching, algebraic data types, sealed types | Rust, Swift, Kotlin, TypeScript, F# |
+| State | Algebraic data types, sealed classes with pattern matching | Rust, Swift, Kotlin, TypeScript |
+| Chain of Responsibility | Middleware pipelines, interceptor chains, async streams | Express, Rails middleware, ASP.NET, Rust |
+| Memento | Immutable value types, snapshots, versioned state | Rust, Swift, Kotlin, Elm |
+
+### Patterns Still Useful (with adaptations)
+
+| Pattern | Modern Form | When Still Needed |
+|---|---|---|
+| Adapter | Wrapper functions, translation layers, protocol extensions | Integrating incompatible APIs |
+| Decorator | Middleware, higher-order components, extension functions | Cross-cutting behavior (logging, caching, auth) |
+| Facade | Simplified module exports, convenience APIs | Exposing coherent sub-system interfaces |
+| Proxy | Lazy evaluation, memoization decorators, virtual proxies | Access control, lazy loading, caching |
+| Composite | Recursive data structures, tree types | Hierarchical component systems |
+| Flyweight | Interning, object pools, string interning | Large numbers of identical objects |
+| Mediator | Event buses, pub/sub, message brokers | Complex object coordination |
+| Specification | Composable predicates, query builders | Business rule composition |
+| Null Object | Option/Result types, sealed unions | Safe absence handling |
+
+---
+
+## Creational Patterns
+
+### Simple Factory / Factory Function
+
+**Intent:** Encapsulate object creation logic so callers specify what they need, not how it is built.
+
+**Modern form:** A function or method that returns an instance. In DI languages, the injector is the factory.
+
+**Use when:**
+- Construction involves branching on parameters
+- The caller should not know the concrete type
+- Creation has side effects (registration, caching, validation)
+
+**Do not use when:**
+- There is only one type to create (just call the constructor)
+- Dependency injection already resolves the dependency
+- You are creating an interface for a single implementation
+
+### Builder
+
+**Intent:** Construct a complex object step by step, separating construction from representation.
+
+**Modern form:** Named parameters, builder methods, or data-class keyword args.
+
+**Use when:**
+- An object has many optional parameters
+- Construction requires validation across multiple fields
+- The same construction process produces different variants
+
+**Do not use when:**
+- The language supports named parameters and defaults
+- The object has fewer than four meaningful parameters
+- A simple factory or constructor suffices
+
+### Object Pool
+
+**Intent:** Reuse expensive-to-create objects to avoid allocation overhead.
+
+**Modern form:** Language-level pool utilities, connection pool libraries.
+
+**Use when:**
+- Object creation is measurably expensive (benchmarks prove it)
+- Objects are short-lived and frequently created
+- The pool size is bounded and meaningful
+
+**Do not use when:**
+- Modern allocators handle object creation efficiently
+- The objects are stateful and hard to reset safely
+- You have not measured a real allocation bottleneck
+
+---
+
+## Structural Patterns
+
+### Adapter
+
+**Intent:** Make incompatible interfaces work together through a translation layer.
+
+**Modern form:** Wrapper function, extension method, protocol conformance shim.
+
+**Use when:**
+- Integrating with a third-party API you cannot change
+- Replacing a dependency while keeping the client unchanged
+- Translating between internal and external data shapes
+
+**Do not use when:**
+- You can change one of the interfaces directly
+- The adaptation logic belongs in the source or target
+- You are adapting your own new code (redesign instead)
+
+### Bridge
+
+**Intent:** Decouple an abstraction from its implementation so both vary independently.
+
+**Modern form:** Dependency injection with interfaces, trait objects, generics with bounds.
+
+**Use when:**
+- Both the abstraction and implementation have meaningful variation axes
+- You need to swap implementations at runtime without touching the abstraction
+- Platform-specific or provider-specific logic must be isolated
+
+**Do not use when:**
+- Only one axis varies (use a simple interface)
+- The abstraction and implementation are tightly coupled by design
+- You are anticipating future variation that has not appeared
+
+### Composite
+
+**Intent:** Compose objects into tree structures so individual and composite objects are used uniformly.
+
+**Modern form:** Recursive data types, algebraic data types with sum types.
+
+**Use when:**
+- The domain naturally has part-whole hierarchies (UI trees, file systems, ASTs)
+- Operations apply uniformly to leaves and branches
+- Clients should not distinguish between individual and composite
+
+**Do not use when:**
+- The hierarchy is artificial (forced to make things uniform)
+- Leaves and composites have fundamentally different semantics
+- A flat collection with grouping logic is simpler
+
+### Decorator
+
+**Intent:** Attach additional responsibilities to an object dynamically, without modifying its class.
+
+**Modern form:** Middleware, higher-order functions, extension methods, AOP decorators.
+
+**Use when:**
+- Cross-cutting behavior (logging, caching, retry, auth) wraps core behavior
+- Combinations of enhancements must be configurable at runtime
+- Inheritance would create combinatorial class explosion
+
+**Do not use when:**
+- The decoration is always applied (just build it in)
+- A single concern can be handled by a simple wrapper
+- The language supports aspects or interceptors natively
+
+### Facade
+
+**Intent:** Provide a simplified interface to a complex subsystem.
+
+**Modern form:** Module-level convenience functions, simplified API exports.
+
+**Use when:**
+- A subsystem has a steep onboarding cost for common use cases
+- Multiple clients need the same sequence of subsystem calls
+- You want to isolate clients from subsystem internals
+
+**Do not use when:**
+- The subsystem is already simple
+- The facade duplicates the subsystem API one-to-one
+- You are hiding complexity that callers should understand
+
+### Flyweight
+
+**Intent:** Share fine-grained objects to support large numbers efficiently.
+
+**Modern form:** Interning, string interning, object pools, value type caching.
+
+**Use when:**
+- Memory or allocation cost is measured and significant
+- Many objects share identical intrinsic state
+- The language does not already intern or cache the type
+
+**Do not use when:**
+- The objects carry significant extrinsic state
+- Modern allocators handle the volume efficiently
+- A simple map or cache would suffice
+
+### Proxy
+
+**Intent:** Control access to an object through a surrogate.
+
+**Modern form:** Lazy evaluation, memoization, virtual proxies via language features.
+
+**Use when:**
+- Object creation is expensive and may not be needed (virtual proxy)
+- Access must be controlled (protection proxy)
+- Remote access needs local representation (remote proxy)
+- Caching results avoids repeated expensive computation (cache proxy)
+
+**Do not use when:**
+- The language supports lazy evaluation natively
+- Access control can be handled by visibility modifiers
+- The proxy adds indirection without measurable benefit
+
+---
+
+## Behavioral Patterns
+
+### Chain of Responsibility
+
+**Intent:** Pass a request along a chain of handlers until one handles it.
+
+**Modern form:** Middleware pipelines, interceptor chains, plugin systems.
+
+**Use when:**
+- Multiple handlers may process a request, in order
+- The handler chain is dynamic or configurable
+- Handlers are loosely coupled and independently testable
+
+**Do not use when:**
+- Exactly one handler is always the right one (use a dispatcher or lookup table)
+- The chain is static and short (explicit if/else is clearer)
+- You need all handlers to run (use Observer or a fan-out pattern)
+
+### Command
+
+**Intent:** Encapsulate a request as an object, supporting queuing, logging, and undo.
+
+**Modern form:** Closures, lambdas, function objects with metadata.
+
+**Use when:**
+- Operations must be queued, logged, or replayed
+- Undo/redo is required
+- The operation must be parameterized and passed around as data
+
+**Do not use when:**
+- A simple function call suffices
+- The language has first-class functions
+- You are wrapping a single function call with no queuing or undo
+
+### Interpreter
+
+**Intent:** Define a grammar and an interpreter for language expressions.
+
+**Modern form:** Parser combinators, DSL libraries, expression evaluation libraries.
+
+**Use when:**
+- You are building a domain-specific language or query language
+- The grammar is stable and the evaluation logic is meaningful
+- Users need to write expressions in a custom syntax
+
+**Do not use when:**
+- A configuration file, enum, or simple function suffices
+- The "language" has only a few constructs
+- A general-purpose expression library (like math.js or a scripting engine) fits
+
+### Iterator
+
+**Intent:** Access elements of a collection sequentially without exposing its representation.
+
+**Modern form:** Language iteration protocols, `for-of`, `forEach`, lazy streams.
+
+**Use when:**
+- The language lacks built-in iteration support
+- You need custom traversal order or filtering
+- The collection has multiple traversal strategies
+
+**Do not use when:**
+- The language has built-in iteration (use it)
+- A simple loop over an array or list suffices
+- You are manually implementing `hasNext`/`next` in a language with foreach
+
+### Mediator
+
+**Intent:** Centralize complex communication between objects through a mediator.
+
+**Modern form:** Event buses, pub/sub systems, message brokers, dependency injection events.
+
+**Use when:**
+- Many objects communicate in many-to-many ways
+- You want to reduce direct coupling between components
+- The communication protocol is complex and should be centralized
+
+**Do not use when:**
+- Communication is simple and direct (just call the method)
+- Only a few objects interact (direct calls are clearer)
+- The mediator becomes a god object that knows everything
+
+### Memento
+
+**Intent:** Capture and restore an object's internal state without violating encapsulation.
+
+**Modern form:** Immutable value types, snapshots, version control of state, serialization.
+
+**Use when:**
+- Full state snapshots are needed for undo or checkpoint
+- The state is complex and encapsulation must be preserved
+- Checkpoints must be stored and restored
+
+**Do not use when:**
+- The state is simple enough to copy directly
+- The language supports immutable state (just replace the value)
+- A diff-based undo is more efficient than full snapshots
+
+### Observer
+
+**Intent:** Define a one-to-many dependency so when one object changes, all dependents are notified.
+
+**Modern form:** Event emitters, reactive streams, async iterators, signals, callbacks.
+
+**Use when:**
+- Multiple consumers need to react to the same event
+- The number of consumers varies at runtime
+- The subject does not know its consumers in advance
+
+**Do not use when:**
+- There is a single consumer (just call the method)
+- The language has built-in events or reactive primitives (use them)
+- You can use a simple callback or promise
+
+### State
+
+**Intent:** Allow an object to change behavior when its internal state changes.
+
+**Modern form:** Algebraic data types, sealed unions with pattern matching, state machines.
+
+**Use when:**
+- Behavior varies significantly based on state
+- State transitions have complex rules
+- The state machine is non-trivial and benefits from explicit modeling
+
+**Do not use when:**
+- A simple enum or if/else handles the states
+- The language supports pattern matching on data types
+- State changes are rare and simple
+
+### Strategy
+
+**Intent:** Define a family of algorithms, encapsulate each, and make them interchangeable.
+
+**Modern form:** Closures, higher-order functions, function parameters.
+
+**Use when:**
+- The algorithm family is large and named
+- Strategies are reused across the system
+- The strategy has internal state or complex setup
+
+**Do not use when:**
+- A simple callback or lambda suffices
+- There is only one algorithm (call it directly)
+- The variation is a single parameter (pass it)
+
+### Template Method
+
+**Intent:** Define the skeleton of an algorithm, deferring steps to subclasses.
+
+**Modern form:** Higher-order functions with callback parameters, composition.
+
+**Use when:**
+- The algorithm skeleton is complex and steps have meaningful variation
+- Subclasses override specific steps while sharing the framework
+- The pattern is embedded in a framework or library
+
+**Do not use when:**
+- A function with callback parameters is simpler
+- The algorithm has only one or two variable steps
+- Composition achieves the same result with less inheritance
+
+### Visitor
+
+**Intent:** Add new operations to a set of objects without changing their classes.
+
+**Modern form:** Pattern matching, algebraic data types, sealed types.
+
+**Use when:**
+- The object hierarchy is stable but operations vary frequently
+- Operations span many classes in the hierarchy
+- The language does not support pattern matching or sealed types
+
+**Do not use when:**
+- The language has pattern matching (use it)
+- The hierarchy changes frequently (Visitor breaks every time)
+- Only one or two operations need to be added
+
+---
+
+## Common Anti-Patterns and Misuse
+
+### Pattern Theater
+
+Applying design patterns as a demonstration of knowledge rather than to solve a real problem.
+
+**Signs:**
+- Every class has an interface and a factory
+- The codebase has more indirection than logic
+- New developers cannot trace a request through the layers
+- The pattern exists but the variation point it isolates never varies
+
+**Fix:** Remove the pattern. Replace with direct calls. Re-add only when a second concrete variation appears.
+
+### God Class Disguised as a Facade
+
+A facade that absorbs all subsystem logic instead of simplifying access.
+
+**Signs:**
+- The facade has dozens of methods
+- The facade contains business logic
+- The facade grows as new subsystem features are needed
+
+**Fix:** Keep facades thin. They should compose, not absorb. Business logic belongs in domain objects or services.
+
+### Singleton Abuse
+
+Using Singleton to share state, control access, or avoid passing dependencies.
+
+**Signs:**
+- Singletons hold mutable global state
+- Tests require resetting or mocking singletons
+- The singleton is used as a service locator
+
+**Fix:** Use dependency injection. Pass dependencies explicitly. Prefer stateless services or scoped instances.
+
+### Over-Engineered Factory
+
+A factory hierarchy (Factory + AbstractFactory + FactoryMethod) for creating one or two types.
+
+**Signs:**
+- The factory returns one concrete type
+- The creation logic is a single constructor call
+- The factory interface has one method with one implementation
+
+**Fix:** Call the constructor. Use a simple factory function if there is branching. Use DI if the language supports it.
+
+### Decorator Chain Explosion
+
+So many decorators that behavior is impossible to trace.
+
+**Signs:**
+- More than three or four decorators wrap a single object
+- The order of decorators matters but is implicit
+- Debugging requires unwrapping the chain manually
+
+**Fix:** Combine related decorators. Use middleware with explicit ordering. Prefer composition of named, testable units.
+
+### Strategy Without Variation
+
+A Strategy interface with one implementation.
+
+**Signs:**
+- One strategy class, one strategy interface, one place it is used
+- The strategy has no internal state
+- The strategy does exactly what a simple function would do
+
+**Fix:** Replace the strategy with a function, closure, or direct call.
+
+### Observer Tight Coupling
+
+Observers that know too much about the subject or each other.
+
+**Signs:**
+- Observers depend on the subject's internal state
+- Observers depend on other observers running first
+- Notification order matters but is not documented
+
+**Fix:** Pass only the event data, not the subject. Keep observers independent. Document ordering requirements explicitly.
+
+### State Pattern Instead of If/Else
+
+Using the State pattern for two or three simple states.
+
+**Signs:**
+- States are handled by a simple enum or status field
+- Transitions are straightforward and few
+- Each state class has a small amount of logic
+
+**Fix:** Use an enum with a switch statement. Use pattern matching if available. State pattern is justified when state behavior is substantial and transitions are complex.
+
+---
+
+## Code Generation Rules
+
+When generating code that involves design decisions, use this order:
+
+1. **Implement directly** — no patterns, no indirection
+2. **Identify the variation point** — what must change independently?
+3. **Check language features** — does the language solve this natively?
+4. **Choose the smallest pattern** — if a pattern is needed, pick the one with the least overhead
+5. **Name the variation** — the interface, delegate, or function parameter should be named after the variation, not the pattern
+
+Default preferences:
+- variation in behavior -> closure or function parameter (not Strategy)
+- variation in type -> generics or sealed union (not Visitor)
+- variation in creation -> simple factory function (not AbstractFactory)
+- cross-cutting concern -> middleware or decorator (not multiple inheritance)
+- state-dependent behavior -> pattern matching on enum (not State)
+- event notification -> language events or reactive streams (not manual Observer)
+
+---
+
+## Review Rules for Cursor
+
+When reviewing or generating changes, actively look for:
+
+- patterns applied without a real variation point
+- interfaces with a single implementation
+- hierarchy depth exceeding two meaningful levels
+- Singleton usage for dependency sharing
+- Factory scaffolding for one or two types
+- Strategy/Command/TemplateMethod where a closure suffices
+- Observer where a direct call or language event works
+- State pattern where an enum and switch is clearer
+- Visitor where pattern matching exists
+- Decorator chains that are hard to trace
+- God classes disguised as Facade or Mediator
+- hard-coded construction instead of dependency injection
+- tight coupling between objects that should interact by contract
+
+---
+
+## Testing Rules
+
+1. Test the behavior, not the pattern structure.
+2. Test each strategy, handler, or state in isolation.
+3. Test decorator chains end-to-end and each decorator individually.
+4. Test adapter correctness against both source and target contracts.
+5. Test composite operations on leaves, branches, and mixed trees.
+6. Test observer notification with zero, one, and many observers.
+7. Test state transitions exhaustively — every transition from every state.
+8. Mock collaborators through interfaces, not through pattern internals.
+
+---
+
+## Review Checklist
+
+Before finalizing any change, verify:
+
+- Is the variation point clearly identified and named?
+- Is the chosen pattern the smallest structure that isolates the variation?
+- Could a language-native feature replace the pattern?
+- Does every interface have at least two real implementations?
+- Is the pattern making the code easier to change, not just more structured?
+- Can a new developer understand the design without knowing the pattern name?
+- Are there any patterns applied to code that has not demonstrated the need?
+- Is the coupling between components loose enough to allow independent change?
+- Does the construction logic belong in a factory, or is it simple enough for a constructor?
+- If removed, would the pattern leave the code clearly worse?
+
+If any answer is no, revise before shipping.
+
+---
+
+## Final Instruction
+
+When uncertain, **implement directly first**. Name the variation point before adding indirection.
+Prefer language-native features over manual pattern scaffolding. A pattern earns its place
+only when a real, demonstrated variation justifies its cost. Reject pattern application that
+adds structure without isolating a meaningful axis of change.

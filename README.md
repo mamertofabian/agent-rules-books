@@ -52,6 +52,12 @@ Author: Steve McConnell
 
 The book covers a broad range of software construction practices: routine design, variables, classes, control flow, defensive programming, coding standards, and testing. This rule set helps agents make disciplined implementation decisions.
 
+### Design Patterns: Elements of Reusable Object-Oriented Software
+
+Authors: Erich Gamma, Richard Helm, Ralph Johnson, John Vlissides (the Gang of Four)
+
+The book catalogues 23 classic object-oriented design patterns organized into creational, structural, and behavioral categories. This rule set adapts the catalog through a modern lens: it identifies which patterns remain genuinely useful, which are now handled by language features (closures, pattern matching, generics, reactive streams), and when to skip a pattern entirely. It covers the four guiding principles as core agent behavior, calls out language-native replacements, and documents common anti-patterns and misuse.
+
 ### Designing Data-Intensive Applications
 
 Author: Martin Kleppmann
@@ -143,6 +149,7 @@ Choose rules based on the task:
 - broad default: `unified-software-engineering`
 - everyday code quality: `clean-code`, `code-complete`
 - architecture and boundaries: `clean-architecture`, `domain-driven-design`, `patterns-of-enterprise-application-architecture`
+- design patterns and object-oriented structure: `design-patterns-gof`
 - domain modeling: `domain-driven-design`, `domain-driven-design-distilled`, `implementing-domain-driven-design`
 - refactoring: `refactoring`, `a-philosophy-of-software-design`
 - legacy code: `working-effectively-with-legacy-code`, optionally `refactoring`
