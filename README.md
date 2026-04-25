@@ -106,6 +106,12 @@ Authors: Andrew Hunt, David Thomas
 
 The book describes a pragmatic approach to software development: responsibility, DRY at the knowledge level, orthogonality, automation, fast feedback, prototyping, and adaptability. This rule set works well as a general engineering layer.
 
+### Unit Testing: Principles, Practices, and Patterns
+
+Author: Vladimir Khorikov
+
+The book describes a disciplined approach to unit testing: AAA structure, full isolation, fast deterministic execution, meaningful assertions on behavior rather than implementation, and clear test naming. This rule set is essential for writing tests that are maintainable, readable, and survive refactoring.
+
 ### Working Effectively with Legacy Code
 
 Author: Michael Feathers
@@ -144,6 +150,7 @@ Choose rules based on the task:
 - data systems: `designing-data-intensive-applications`
 - language tooling and DSLs: `language-implementation-patterns`
 - general engineering style: `the-pragmatic-programmer`
+- unit testing: `unit-testing-principles`
 
 A good default is to start with one primary rule set and add a second only when it materially changes the agent's decisions. For a specific task, you can temporarily copy a rule into the project, use it during the work, then remove or disable it.
 
